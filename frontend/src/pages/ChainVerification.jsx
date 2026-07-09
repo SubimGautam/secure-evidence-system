@@ -22,7 +22,7 @@ function ChainVerification() {
   async function runVerification() {
     setError('');
     setChecking(true);
-    setResult(null);
+    setResult(null); 
     try {
       const data = await verifyAuditChain();
       setResult(data);
