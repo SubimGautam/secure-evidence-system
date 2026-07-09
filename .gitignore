@@ -1,0 +1,13 @@
+# Root-level secrets — package-level .gitignore files handle node_modules,
+# build output, and per-package .env files within backend/ and frontend/.
+.env
+.env.*.local
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Postgres data if it's ever bind-mounted instead of using a named volume
+pgdata/

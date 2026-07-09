@@ -1,0 +1,337 @@
+// Prisma schema — Evidence Chain-of-Custody System
+// Milestone 2: full database layer. Auth/RBAC/custody logic lands on top of
+// this in later milestones — this file only defines the data model.
+
+generator client {
+  provider     = "prisma-client-js"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Health check (Milestone 1) — kept as-is, still backs GET /api/v1/healthz.
+// ---------------------------------------------------------------------------
+
+model HealthCheck {
+  id        Int      @id @default(autoincrement())
+  checkedAt DateTime @default(now())
+
+  @@map("health_checks")
+}
+
+// ---------------------------------------------------------------------------
+// RBAC
+// ---------------------------------------------------------------------------
+
+/// Roles are a table, not an enum, so they can be inspected/described without
+/// a code change. `name` is the machine-readable code RBAC middleware checks
+/// against; `description` is what an admin screen would show a human.
+model Role {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique
+  description String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  @@map("roles")
+}
+
+model User {
+  id           String @id @default(uuid()) @db.Uuid
+  email        String @unique
+  fullName     String
+  passwordHash String
+
+  roleId String @db.Uuid
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  // Denormalized read-path caches — cheaper than joining MFASecret/LoginAttempt
+  // on every request. The joined tables remain the source of truth; a service
+  // in Milestone 3/4 keeps these in sync when MFA state or lockouts change.
+  mfaEnabled  Boolean   @default(false)
+  lockedUntil DateTime?
+
+  // A hashed, single-use password-reset token. Storing it directly on User
+  // (rather than a dedicated table) is enough for one outstanding reset at a
+  // time: issuing a new one overwrites the old, and a successful reset clears
+  // both fields — that's the "single use" guarantee, no extra table needed.
+  passwordResetTokenHash      String?
+  passwordResetTokenExpiresAt DateTime?
+
+  // Soft delete: accounts are deactivated, never removed — a hard delete would
+  // orphan foreign keys in AuditLog/CustodyTransfer/Evidence, which must stay
+  // resolvable for as long as the records they reference exist.
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mfaSecret          MFASecret?
+  sessions           Session[]
+  refreshTokens      RefreshToken[]
+  loginAttempts      LoginAttempt[]
+  auditLogEntries    AuditLog[]
+  filesUploaded      EvidenceFile[]
+  evidenceLogged     Evidence[]        @relation("EvidenceLoggedBy")
+  evidenceCustodied  Evidence[]        @relation("EvidenceCustodian")
+  transfersInitiated CustodyTransfer[] @relation("TransferFrom")
+  transfersReceived  CustodyTransfer[] @relation("TransferTo")
+
+  @@index([roleId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Evidence
+// ---------------------------------------------------------------------------
+
+/// The full lifecycle an item moves through. Deliberately has no
+/// "transfer in progress" value of its own — that's already tracked by
+/// CustodyTransfer.status, and duplicating it here would just give the two
+/// a chance to disagree.
+enum EvidenceStatus {
+  PENDING // logged, not yet confirmed by the officer who collected it
+  COLLECTED // confirmed, ready to be transferred
+  IN_CUSTODY // currently held by whoever accepted the most recent transfer
+  RELEASED_FOR_COURT // checked out for a court proceeding
+  RETURNED // back from court, held by the same custodian
+  ARCHIVED // no longer active — terminal
+}
+
+/// Cases aren't part of this milestone's model set — each item stands alone,
+/// identified by `referenceCode`. Adding a Case parent later is a additive
+/// migration (nullable FK), not a redesign.
+model Evidence {
+  id                String         @id @default(uuid()) @db.Uuid
+  referenceCode     String         @unique
+  description       String
+  type              String
+  collectedAt       DateTime
+  collectedLocation String?
+  status            EvidenceStatus @default(PENDING)
+
+  loggedById String @db.Uuid
+  loggedBy   User   @relation("EvidenceLoggedBy", fields: [loggedById], references: [id], onDelete: Restrict)
+
+  currentCustodianId String @db.Uuid
+  currentCustodian   User   @relation("EvidenceCustodian", fields: [currentCustodianId], references: [id], onDelete: Restrict)
+
+  // No `deletedAt` here on purpose: evidence never disappears, it moves
+  // through `status` toward RELEASED/DISPOSED. A soft-delete flag would give
+  // two competing ways to represent the same "this item is done" fact.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files            EvidenceFile[]
+  custodyTransfers CustodyTransfer[]
+
+  @@index([currentCustodianId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("evidence")
+}
+
+/// A separate table (rather than columns on Evidence) because one exhibit can
+/// have several attachments (photos, scans, reports) over its lifetime.
+model EvidenceFile {
+  id         String   @id @default(uuid()) @db.Uuid
+  evidenceId String   @db.Uuid
+  evidence   Evidence @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  storagePath      String // location inside the encrypted file volume — never web-servable directly
+  sha256Hash       String // hashed before encryption; proves file integrity independent of the audit hash chain
+  encryptionKeyId  String // which key encrypted this file at rest (Milestone 11)
+
+  uploadedById String @db.Uuid
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  // Soft delete: a superseded/mis-uploaded file is hidden, not erased — its
+  // hash and upload record stay part of the evidence's audit history.
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([evidenceId])
+  @@map("evidence_files")
+}
+
+// ---------------------------------------------------------------------------
+// Chain of custody
+// ---------------------------------------------------------------------------
+
+enum TransferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+/// The initiate/accept handshake from the architecture doc §5. Rows are
+/// never edited after response — CANCELLED/REJECTED transfers stay as the
+/// historical record of what was attempted, not just what succeeded.
+model CustodyTransfer {
+  id         String   @id @default(uuid()) @db.Uuid
+  evidenceId String   @db.Uuid
+  evidence   Evidence @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+
+  fromUserId String @db.Uuid
+  fromUser   User   @relation("TransferFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
+
+  toUserId String @db.Uuid
+  toUser   User   @relation("TransferTo", fields: [toUserId], references: [id], onDelete: Restrict)
+
+  status        TransferStatus @default(PENDING)
+  // Required for ADMIN override transfers, optional for a normal handshake —
+  // enforced in the service layer (Milestone 8), not the schema.
+  justification String?
+
+  initiatedAt DateTime  @default(now())
+  respondedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([evidenceId])
+  @@index([toUserId, status])
+  @@map("custody_transfers")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log — append-only, hash-chained (architecture doc §6)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  timestamp DateTime @default(now())
+
+  actorUserId String? @db.Uuid
+  actorUser   User?   @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  eventType  String
+  entityType String?
+  entityId   String?
+  payload    Json?
+
+  prevHash  String
+  entryHash String @unique
+
+  // No `updatedAt`: this table is append-only. A mutable timestamp would
+  // contradict the tamper-evidence guarantee the hash chain exists to give.
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Auth: sessions, refresh tokens, MFA, login attempts
+// ---------------------------------------------------------------------------
+
+/// One row per login (device + browser), independent of how many times its
+/// refresh token has rotated. Lets a user (or an admin) revoke "that one
+/// laptop" without touching every other active session.
+model Session {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  userAgent String?
+  ipAddress String?
+
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+  @@index([revokedAt])
+  @@map("sessions")
+}
+
+/// Opaque, DB-backed, hashed at rest — never a bare JWT — specifically so a
+/// stolen token can be revoked (architecture doc §4). `replacedByTokenId`
+/// forms a rotation chain: presenting an already-replaced token again is the
+/// reuse-detection signal that revokes the whole session.
+model RefreshToken {
+  id        String  @id @default(uuid()) @db.Uuid
+  sessionId String  @db.Uuid
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  tokenHash String    @unique
+  issuedAt  DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  replacedByTokenId String?       @unique @db.Uuid
+  replacedByToken   RefreshToken? @relation("TokenRotation", fields: [replacedByTokenId], references: [id])
+  replacedFromToken RefreshToken? @relation("TokenRotation")
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// Isolated from User so the encrypted secret and recovery codes have their
+/// own narrow table — a future stricter DB grant (read-restricted to the
+/// auth module's role) can target this table alone.
+model MFASecret {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  secretEncrypted     String // AES-256-GCM ciphertext — never the raw TOTP seed
+  recoveryCodesHashed String[] // Argon2id hashes; one-time use tracked by the auth service
+
+  // The last 30s time-step accepted for this user, so the same still-valid
+  // code can't be replayed a second time before it naturally expires
+  // (RFC 6238 §5.2's recommended defense against TOTP replay).
+  lastUsedStep Int?
+
+  verifiedAt DateTime? // null until enrollment is confirmed with one valid code
+  disabledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("mfa_secrets")
+}
+
+/// Append-only, like AuditLog — this is what the combined IP+account
+/// lockout backoff (architecture doc §4) reads from. `userId` is nullable
+/// because failed attempts against a non-existent email must still be
+/// recorded to rate-limit account-enumeration probing.
+model LoginAttempt {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String? @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  emailAttempted String
+  ipAddress      String
+  userAgent      String?
+  success        Boolean
+
+  createdAt DateTime @default(now())
+
+  @@index([emailAttempted, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("login_attempts")
+}

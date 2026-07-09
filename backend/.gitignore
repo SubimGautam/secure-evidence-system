@@ -1,0 +1,16 @@
+node_modules
+
+# Keep environment variables out of version control
+.env
+.env.*.local
+
+# Generated Prisma client — regenerated from prisma/schema.prisma on install/build
+/src/generated/prisma
+
+# Logs and coverage
+npm-debug.log*
+coverage/
+
+# Local (non-Docker) encrypted evidence file storage
+/storage/
+

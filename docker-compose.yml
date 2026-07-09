@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_RUNTIME_USER: ${POSTGRES_RUNTIME_USER}
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Creates the restricted runtime role on first boot of an empty
+      # volume — see backend/prisma/init/01-create-runtime-role.sh for why
+      # the app doesn't just connect as POSTGRES_USER.
+      - ./backend/prisma/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Published (on 5433, since 5432 is commonly already taken by a local
+      # Postgres install) so `npm run dev` on the host can point at the same
+      # database without Docker in the loop. Not part of the app's own attack
+      # surface — the app services never rely on this port, only on the
+      # internal network, where it's still reachable as postgres:5432.
+      - '5433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [evidence-net]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      # DATABASE_URL (the schema-owning role) is what `prisma migrate deploy`
+      # uses when run against this stack — CREATE/ALTER TABLE needs
+      # ownership. The running app itself never uses this; see
+      # RUNTIME_DATABASE_URL below.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      # The role Prisma Client actually queries as at runtime — ordinary
+      # privileges only, not the schema owner and not a superuser, so the
+      # audit_logs RLS policies actually restrict it. See
+      # backend/prisma/init/01-create-runtime-role.sh.
+      RUNTIME_DATABASE_URL: postgresql://${POSTGRES_RUNTIME_USER}:${POSTGRES_RUNTIME_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      CORS_ORIGIN: http://localhost:8080
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TTL: 15m
+      REFRESH_TOKEN_TTL_DAYS: 7
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      EVIDENCE_STORAGE_PATH: /app/storage/evidence-files
+    volumes:
+      - evidence-files:/app/storage/evidence-files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [evidence-net]
+    # No `ports:` mapping on purpose — the backend is only reachable from
+    # other containers on evidence-net (i.e. the nginx edge), never directly
+    # from the host/internet. Matches the trust-boundary design in §2.
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [evidence-net]
+
+networks:
+  evidence-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  evidence-files:

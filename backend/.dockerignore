@@ -1,0 +1,8 @@
+node_modules
+src/generated
+.env
+.env.*
+npm-debug.log*
+coverage
+tests
+.git
