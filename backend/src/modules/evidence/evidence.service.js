@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const prisma = require('../../lib/prisma');
 const httpError = require('../../lib/httpError');
 const { encryptBuffer, decryptBuffer, sha256 } = require('../../lib/crypto');
+const { verifyFileSignature } = require('../../lib/fileSignature');
 const fileStorage = require('../../lib/fileStorage');
 const { recordAuditEvent, AUDIT_EVENTS } = require('../../lib/auditLog');
 
@@ -196,6 +197,14 @@ function archiveEvidence(evidence, actorUserId) {
 // pre-encryption SHA-256 is stored so integrity can be verified independent
 // of the encryption layer itself.
 async function uploadFile(evidence, user, multerFile) {
+  // upload.js's allowlist only checks the client-supplied Content-Type
+  // header for this form field — trivially spoofable. This confirms the
+  // bytes actually match what that type should look like before anything
+  // is encrypted and written to disk.
+  if (!verifyFileSignature(multerFile.buffer, multerFile.mimetype)) {
+    throw httpError(400, 'File content does not match its declared type');
+  }
+
   const sha256Hash = sha256(multerFile.buffer);
   const encrypted = encryptBuffer(multerFile.buffer);
   const filename = fileStorage.generateFilename();
