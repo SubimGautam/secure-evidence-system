@@ -141,7 +141,10 @@ async function resetUserMfa(targetUserId, actingUserId) {
   }
 
   return prisma.$transaction(async (tx) => {
-    await tx.mFASecret.updateMany({ where: { userId: targetUserId }, data: { disabledAt: new Date() } });
+    await tx.mFASecret.updateMany({
+      where: { userId: targetUserId },
+      data: { disabledAt: new Date() },
+    });
     await tx.user.update({ where: { id: targetUserId }, data: { mfaEnabled: false } });
     await recordAuditEvent(tx, {
       actorUserId: actingUserId,
@@ -156,7 +159,14 @@ function listUserSessions(targetUserId) {
   return prisma.session.findMany({
     where: { userId: targetUserId, revokedAt: null, expiresAt: { gt: new Date() } },
     orderBy: { lastUsedAt: 'desc' },
-    select: { id: true, userAgent: true, ipAddress: true, createdAt: true, lastUsedAt: true, expiresAt: true },
+    select: {
+      id: true,
+      userAgent: true,
+      ipAddress: true,
+      createdAt: true,
+      lastUsedAt: true,
+      expiresAt: true,
+    },
   });
 }
 
@@ -176,6 +186,129 @@ async function revokeUserSession(targetUserId, sessionId, actingUserId) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Self-service profile — view/edit/export/import of the caller's own
+// account. Every function here takes only `userId` (the authenticated
+// caller's own id from req.user), never a target id, which is what makes
+// this a different, narrower surface than the admin-only functions above:
+// there's no id parameter for an IDOR check to fail on in the first place.
+// ---------------------------------------------------------------------------
+
+function getOwnProfile(userId) {
+  return prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      mfaEnabled: true,
+      createdAt: true,
+      role: { select: { name: true } },
+    },
+  });
+}
+
+async function updateOwnProfile(userId, { fullName }) {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: { fullName },
+      select: { id: true, email: true, fullName: true },
+    });
+    await recordAuditEvent(tx, {
+      actorUserId: userId,
+      eventType: AUDIT_EVENTS.PROFILE_UPDATED,
+      entityType: 'User',
+      entityId: userId,
+      payload: { fullName },
+    });
+    return user;
+  });
+}
+
+// A GDPR-style "download my data" export: the account record plus
+// everything else the schema attributes to this user — evidence they
+// logged/hold, custody transfers they're a party to, their own sessions and
+// audit trail. Scoped entirely by the caller's own id (see note above), so
+// this can never become a way to pull someone else's history.
+async function exportOwnData(userId) {
+  const [
+    user,
+    evidenceLogged,
+    evidenceCustodied,
+    transfersInitiated,
+    transfersReceived,
+    sessions,
+    auditEntries,
+  ] = await Promise.all([
+    getOwnProfile(userId),
+    prisma.evidence.findMany({
+      where: { loggedById: userId },
+      select: { id: true, referenceCode: true, description: true, status: true, createdAt: true },
+    }),
+    prisma.evidence.findMany({
+      where: { currentCustodianId: userId },
+      select: { id: true, referenceCode: true, description: true, status: true },
+    }),
+    prisma.custodyTransfer.findMany({
+      where: { fromUserId: userId },
+      select: { id: true, evidenceId: true, toUserId: true, status: true, initiatedAt: true },
+    }),
+    prisma.custodyTransfer.findMany({
+      where: { toUserId: userId },
+      select: { id: true, evidenceId: true, fromUserId: true, status: true, initiatedAt: true },
+    }),
+    prisma.session.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        userAgent: true,
+        ipAddress: true,
+        createdAt: true,
+        lastUsedAt: true,
+        revokedAt: true,
+      },
+    }),
+    prisma.auditLog.findMany({
+      where: { actorUserId: userId },
+      select: { id: true, eventType: true, entityType: true, entityId: true, timestamp: true },
+      orderBy: { timestamp: 'desc' },
+    }),
+  ]);
+
+  // Exporting is itself worth a trail entry — a bulk pull of one's own data
+  // is exactly the kind of action an insider-threat review would want to see
+  // in the log, not just mutations.
+  await prisma.$transaction((tx) =>
+    recordAuditEvent(tx, {
+      actorUserId: userId,
+      eventType: AUDIT_EVENTS.PROFILE_DATA_EXPORTED,
+      entityType: 'User',
+      entityId: userId,
+    }),
+  );
+
+  return {
+    exportedAt: new Date().toISOString(),
+    user,
+    evidenceLogged,
+    evidenceCustodied,
+    transfersInitiated,
+    transfersReceived,
+    sessions,
+    auditEntries,
+  };
+}
+
+// Re-applies just `fullName` from a previously exported file. Goes through
+// the exact same strict-schema, mass-assignment-safe path as
+// updateOwnProfile — the rest of an export file (evidence, sessions, audit
+// history) is read-only historical data and isn't something "import" is
+// meant to write back.
+function importOwnProfile(userId, { fullName }) {
+  return updateOwnProfile(userId, { fullName });
+}
+
 module.exports = {
   listUsers,
   listDirectory,
@@ -186,4 +319,8 @@ module.exports = {
   resetUserMfa,
   listUserSessions,
   revokeUserSession,
+  getOwnProfile,
+  updateOwnProfile,
+  exportOwnData,
+  importOwnProfile,
 };

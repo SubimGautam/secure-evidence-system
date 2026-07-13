@@ -250,7 +250,10 @@ async function verifyMfaPendingAndGetUser(mfaToken) {
     throw httpError(401, 'Invalid or expired MFA challenge — please log in again');
   }
 
-  const user = await prisma.user.findUnique({ where: { id: payload.sub }, include: { role: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: payload.sub },
+    include: { role: true },
+  });
   if (!user || user.deletedAt) throw httpError(401, 'Invalid or expired MFA challenge');
   return user;
 }

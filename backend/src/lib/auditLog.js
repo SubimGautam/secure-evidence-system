@@ -32,6 +32,8 @@ const AUDIT_EVENTS = {
   USER_STATUS_CHANGED: 'USER_STATUS_CHANGED',
   USER_LOCKED: 'USER_LOCKED',
   USER_UNLOCKED: 'USER_UNLOCKED',
+  PROFILE_UPDATED: 'PROFILE_UPDATED',
+  PROFILE_DATA_EXPORTED: 'PROFILE_DATA_EXPORTED',
 };
 
 // Deterministic regardless of key insertion order — needed because a value
@@ -47,7 +49,15 @@ function canonicalStringify(value) {
     .join(',')}}`;
 }
 
-function computeEntryHash({ prevHash, timestamp, actorUserId, eventType, entityType, entityId, payload }) {
+function computeEntryHash({
+  prevHash,
+  timestamp,
+  actorUserId,
+  eventType,
+  entityType,
+  entityId,
+  payload,
+}) {
   const canonical = [
     prevHash,
     timestamp.toISOString(),
@@ -70,13 +80,24 @@ function computeEntryHash({ prevHash, timestamp, actorUserId, eventType, entityT
 //  2. The event is meant to be atomic with the action it's recording: if the
 //     audit write fails, the action it describes should roll back too — a
 //     chain-of-custody system's log is not allowed to fall behind reality.
-async function recordAuditEvent(tx, { actorUserId = null, eventType, entityType = null, entityId = null, payload = null }) {
+async function recordAuditEvent(
+  tx,
+  { actorUserId = null, eventType, entityType = null, entityId = null, payload = null },
+) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK_KEY})`;
 
   const last = await tx.auditLog.findFirst({ orderBy: { timestamp: 'desc' } });
   const prevHash = last ? last.entryHash : GENESIS_HASH;
   const timestamp = new Date();
-  const entryHash = computeEntryHash({ prevHash, timestamp, actorUserId, eventType, entityType, entityId, payload });
+  const entryHash = computeEntryHash({
+    prevHash,
+    timestamp,
+    actorUserId,
+    eventType,
+    entityType,
+    entityId,
+    payload,
+  });
 
   return tx.auditLog.create({
     data: { actorUserId, eventType, entityType, entityId, payload, prevHash, entryHash, timestamp },
@@ -100,7 +121,8 @@ async function verifyChain(prisma) {
         checkedCount: i,
         totalCount: rows.length,
         brokenAt: { id: row.id, eventType: row.eventType, timestamp: row.timestamp },
-        reason: 'This entry\'s prevHash does not match the previous entry\'s hash — the chain has been broken or reordered.',
+        reason:
+          "This entry's prevHash does not match the previous entry's hash — the chain has been broken or reordered.",
       };
     }
 
@@ -120,14 +142,28 @@ async function verifyChain(prisma) {
         checkedCount: i,
         totalCount: rows.length,
         brokenAt: { id: row.id, eventType: row.eventType, timestamp: row.timestamp },
-        reason: 'This entry\'s stored hash does not match its recomputed hash — its contents were altered after being written.',
+        reason:
+          "This entry's stored hash does not match its recomputed hash — its contents were altered after being written.",
       };
     }
 
     expectedPrevHash = row.entryHash;
   }
 
-  return { valid: true, checkedCount: rows.length, totalCount: rows.length, brokenAt: null, reason: null };
+  return {
+    valid: true,
+    checkedCount: rows.length,
+    totalCount: rows.length,
+    brokenAt: null,
+    reason: null,
+  };
 }
 
-module.exports = { recordAuditEvent, verifyChain, computeEntryHash, canonicalStringify, AUDIT_EVENTS, GENESIS_HASH };
+module.exports = {
+  recordAuditEvent,
+  verifyChain,
+  computeEntryHash,
+  canonicalStringify,
+  AUDIT_EVENTS,
+  GENESIS_HASH,
+};

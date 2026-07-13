@@ -81,6 +81,43 @@ async function revokeSession(req, res, next) {
   }
 }
 
+async function getOwnProfile(req, res, next) {
+  try {
+    const user = await usersService.getOwnProfile(req.user.id);
+    res.status(200).json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateOwnProfile(req, res, next) {
+  try {
+    const user = await usersService.updateOwnProfile(req.user.id, req.body);
+    res.status(200).json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function exportOwnData(req, res, next) {
+  try {
+    const data = await usersService.exportOwnData(req.user.id);
+    res.setHeader('Content-Disposition', 'attachment; filename="my-data-export.json"');
+    res.status(200).json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function importOwnProfile(req, res, next) {
+  try {
+    const user = await usersService.importOwnProfile(req.user.id, req.body);
+    res.status(200).json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   list,
   directory,
@@ -91,4 +128,8 @@ module.exports = {
   resetMfa,
   listSessions,
   revokeSession,
+  getOwnProfile,
+  updateOwnProfile,
+  exportOwnData,
+  importOwnProfile,
 };

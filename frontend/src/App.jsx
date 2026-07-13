@@ -12,6 +12,7 @@ import AuditLog from './pages/AuditLog';
 import ChainVerification from './pages/ChainVerification';
 import CustodyHistory from './pages/CustodyHistory';
 import AdminDashboard from './pages/AdminDashboard';
+import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
           <Route path="/audit-log/verify" element={<ChainVerification />} />
           <Route path="/custody-history" element={<CustodyHistory />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Route>
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const navLinkClass = ({ isActive }) =>
@@ -29,10 +29,18 @@ function Layout() {
           <NavLink to="/audit-log" className={navLinkClass} onClick={() => setMenuOpen(false)}>
             Audit Log
           </NavLink>
-          <NavLink to="/audit-log/verify" className={navLinkClass} onClick={() => setMenuOpen(false)}>
+          <NavLink
+            to="/audit-log/verify"
+            className={navLinkClass}
+            onClick={() => setMenuOpen(false)}
+          >
             Verify Chain
           </NavLink>
-          <NavLink to="/custody-history" className={navLinkClass} onClick={() => setMenuOpen(false)}>
+          <NavLink
+            to="/custody-history"
+            className={navLinkClass}
+            onClick={() => setMenuOpen(false)}
+          >
             Custody History
           </NavLink>
         </>
@@ -42,6 +50,9 @@ function Layout() {
           Admin
         </NavLink>
       )}
+      <NavLink to="/profile" className={navLinkClass} onClick={() => setMenuOpen(false)}>
+        My Profile
+      </NavLink>
     </>
   );
 
@@ -57,9 +68,9 @@ function Layout() {
           </div>
 
           <div className="hidden items-center gap-3 text-sm lg:flex">
-            <span className="text-slate-500 dark:text-slate-400">
+            <Link to="/profile" className="text-slate-500 hover:underline dark:text-slate-400">
               {user.fullName} <span className="text-slate-400">· {user.role}</span>
-            </span>
+            </Link>
             <button
               type="button"
               onClick={logout}
@@ -76,11 +87,27 @@ function Layout() {
             aria-expanded={menuOpen}
             className="rounded border border-slate-300 p-2 text-slate-600 dark:border-slate-600 dark:text-slate-300 lg:hidden"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
               {menuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               )}
             </svg>
           </button>
