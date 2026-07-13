@@ -14,6 +14,24 @@ async function initiateTransfer(evidence, fromUser, toUserId) {
     throw httpError(409, `Evidence is ${evidence.status} and cannot be transferred right now`);
   }
 
+  // Without this, nothing stops a second (or third) PENDING transfer from
+  // being created for the same item while the first is still outstanding —
+  // and unlike the evidence's own status, a transfer's PENDING state isn't
+  // touched by a *different* transfer being accepted. That let a stale,
+  // never-withdrawn invite still be accepted later, silently reassigning
+  // custody away from whoever the item was legitimately handed to in the
+  // meantime (see respondToTransfer's custody re-check below for the
+  // second layer of defense against the same class of bug).
+  const existingPending = await prisma.custodyTransfer.findFirst({
+    where: { evidenceId: evidence.id, status: 'PENDING' },
+  });
+  if (existingPending) {
+    throw httpError(
+      409,
+      'This evidence already has a pending transfer awaiting response — it must be accepted or rejected before another can be initiated',
+    );
+  }
+
   const toUser = await prisma.user.findUnique({ where: { id: toUserId } });
   if (!toUser || toUser.deletedAt) throw httpError(400, 'Recipient not found');
 
@@ -43,6 +61,23 @@ async function initiateTransfer(evidence, fromUser, toUserId) {
 async function respondToTransfer(transfer, accept, actorUserId) {
   if (transfer.status !== 'PENDING') {
     throw httpError(409, 'This transfer has already been resolved');
+  }
+
+  // Defense in depth, independent of the duplicate-pending guard in
+  // initiateTransfer above: re-confirm the sender is still the item's
+  // actual current custodian right before an acceptance takes effect. A
+  // transfer being PENDING only means nobody has *responded* to it yet —
+  // it says nothing about whether custody has since moved on through some
+  // other path. Without this, a stale approval could still silently
+  // reassign custody away from whoever legitimately holds the item now.
+  if (accept) {
+    const evidence = await prisma.evidence.findUnique({ where: { id: transfer.evidenceId } });
+    if (!evidence || evidence.currentCustodianId !== transfer.fromUserId) {
+      throw httpError(
+        409,
+        'This transfer is no longer valid — custody of this evidence has changed since it was initiated',
+      );
+    }
   }
 
   return prisma.$transaction(async (tx) => {
