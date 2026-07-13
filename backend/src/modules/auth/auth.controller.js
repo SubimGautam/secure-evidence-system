@@ -43,7 +43,9 @@ async function login(req, res, next) {
     }
 
     setRefreshCookie(res, result.refreshToken, result.refreshTokenExpiresAt);
-    res.status(200).json({ mfaRequired: false, accessToken: result.accessToken, user: result.user });
+    res
+      .status(200)
+      .json({ mfaRequired: false, accessToken: result.accessToken, user: result.user });
   } catch (err) {
     next(err);
   }

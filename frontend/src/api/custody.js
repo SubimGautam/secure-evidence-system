@@ -1,7 +1,9 @@
 import apiClient from './client';
 
 export function initiateTransfer(evidenceId, toUserId) {
-  return apiClient.post(`/evidence/${evidenceId}/transfer`, { toUserId }).then((r) => r.data.transfer);
+  return apiClient
+    .post(`/evidence/${evidenceId}/transfer`, { toUserId })
+    .then((r) => r.data.transfer);
 }
 
 export function acceptTransfer(transferId) {

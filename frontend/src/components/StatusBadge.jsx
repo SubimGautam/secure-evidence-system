@@ -14,7 +14,8 @@ const STATUS_STYLES = {
 };
 
 function StatusBadge({ status }) {
-  const style = STATUS_STYLES[status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
+  const style =
+    STATUS_STYLES[status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
   return (
     <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${style}`}>
       {status.replace(/_/g, ' ')}

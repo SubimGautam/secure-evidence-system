@@ -9,7 +9,14 @@ import Spinner from '../components/Spinner';
 import EmptyState from '../components/EmptyState';
 import StatusBadge from '../components/StatusBadge';
 
-const STATUS_ORDER = ['PENDING', 'COLLECTED', 'IN_CUSTODY', 'RELEASED_FOR_COURT', 'RETURNED', 'ARCHIVED'];
+const STATUS_ORDER = [
+  'PENDING',
+  'COLLECTED',
+  'IN_CUSTODY',
+  'RELEASED_FOR_COURT',
+  'RETURNED',
+  'ARCHIVED',
+];
 
 function Dashboard() {
   const { user } = useAuth();
@@ -82,7 +89,9 @@ function Dashboard() {
                 >
                   {t.evidence.referenceCode} — {t.evidence.description}
                 </Link>
-                <span className="text-amber-700 dark:text-amber-400">from {t.fromUser.fullName}</span>
+                <span className="text-amber-700 dark:text-amber-400">
+                  from {t.fromUser.fullName}
+                </span>
               </li>
             ))}
           </ul>
@@ -106,7 +115,10 @@ function Dashboard() {
           <ul className="divide-y divide-slate-200 rounded border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-800">
             {myCustody.slice(0, 5).map((item) => (
               <li key={item.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                <Link to={`/evidence/${item.id}`} className="font-medium text-slate-800 hover:underline dark:text-slate-100">
+                <Link
+                  to={`/evidence/${item.id}`}
+                  className="font-medium text-slate-800 hover:underline dark:text-slate-100"
+                >
                   {item.referenceCode} — {item.description}
                 </Link>
                 <StatusBadge status={item.status} />

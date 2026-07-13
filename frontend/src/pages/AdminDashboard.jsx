@@ -81,7 +81,9 @@ function AdminDashboard() {
   }, [users, search, roleFilter]);
 
   if (!isAdmin) {
-    return <Alert>Your role ({currentUser.role}) does not have access to the admin dashboard.</Alert>;
+    return (
+      <Alert>Your role ({currentUser.role}) does not have access to the admin dashboard.</Alert>
+    );
   }
 
   async function runAction(userId, action) {
@@ -155,7 +157,9 @@ function AdminDashboard() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Admin dashboard</h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+          Admin dashboard
+        </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           User management and system health.{' '}
           <Link to="/audit-log" className="underline">
@@ -168,12 +172,18 @@ function AdminDashboard() {
 
       {/* System health */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">System health</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
+          System health
+        </h2>
         {health === null ? (
           <Spinner label="Checking system health…" />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <HealthCard label="Status" value={health.status} tone={health.status === 'ok' ? 'ok' : 'bad'} />
+            <HealthCard
+              label="Status"
+              value={health.status}
+              tone={health.status === 'ok' ? 'ok' : 'bad'}
+            />
             <HealthCard
               label="Database"
               value={health.database}
@@ -240,7 +250,8 @@ function AdminDashboard() {
                       <tr className="align-top hover:bg-slate-50 dark:hover:bg-slate-700/50">
                         <td className="px-4 py-2">
                           <p className="text-slate-800 dark:text-slate-100">
-                            {u.fullName} {isSelf && <span className="text-xs text-slate-400">(you)</span>}
+                            {u.fullName}{' '}
+                            {isSelf && <span className="text-xs text-slate-400">(you)</span>}
                           </p>
                           <p className="text-xs text-slate-400">{u.email}</p>
                         </td>
@@ -332,8 +343,9 @@ function AdminDashboard() {
                                     className="flex items-center justify-between rounded border border-slate-200 bg-white px-3 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-800"
                                   >
                                     <span className="text-slate-600 dark:text-slate-300">
-                                      {s.userAgent ?? 'Unknown device'} · {s.ipAddress ?? 'unknown IP'} · last
-                                      used {formatDate(s.lastUsedAt)}
+                                      {s.userAgent ?? 'Unknown device'} ·{' '}
+                                      {s.ipAddress ?? 'unknown IP'} · last used{' '}
+                                      {formatDate(s.lastUsedAt)}
                                     </span>
                                     <button
                                       type="button"

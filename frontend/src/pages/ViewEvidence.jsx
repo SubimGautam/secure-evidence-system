@@ -61,7 +61,9 @@ function ViewEvidence() {
 
   useEffect(() => {
     load();
-    getDirectory().then(setDirectory).catch(() => {});
+    getDirectory()
+      .then(setDirectory)
+      .catch(() => {});
   }, [load]);
 
   if (error) return <Alert>{error}</Alert>;
@@ -169,7 +171,8 @@ function ViewEvidence() {
       key: 'reopen',
       label: 'Reopen for correction',
       variant: 'secondary',
-      onClick: () => handleLifecycleAction(reopenForCorrection, 'Evidence reopened for correction.'),
+      onClick: () =>
+        handleLifecycleAction(reopenForCorrection, 'Evidence reopened for correction.'),
     },
     canRelease && {
       key: 'release',
@@ -242,7 +245,9 @@ function ViewEvidence() {
               </div>
               <div>
                 <dt className="text-slate-400">Collected at</dt>
-                <dd className="text-slate-800 dark:text-slate-200">{formatDate(evidence.collectedAt)}</dd>
+                <dd className="text-slate-800 dark:text-slate-200">
+                  {formatDate(evidence.collectedAt)}
+                </dd>
               </div>
               <div>
                 <dt className="text-slate-400">Collected location</dt>
@@ -284,7 +289,9 @@ function ViewEvidence() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-300">Collected location</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">
+                Collected location
+              </span>
               <input
                 type="text"
                 value={collectedLocation}
@@ -314,7 +321,9 @@ function ViewEvidence() {
 
       {/* Custody */}
       <section className="rounded border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">Chain of custody</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Chain of custody
+        </h2>
 
         {canRespond && (
           <div className="mb-4 rounded border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
@@ -357,7 +366,9 @@ function ViewEvidence() {
         {canInitiateTransfer && (
           <form onSubmit={handleInitiateTransfer} className="mb-4 flex items-end gap-2">
             <label className="flex flex-1 flex-col gap-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-300">Transfer custody to</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">
+                Transfer custody to
+              </span>
               <select
                 required
                 value={recipientId}

@@ -22,7 +22,7 @@ function ChainVerification() {
   async function runVerification() {
     setError('');
     setChecking(true);
-    setResult(null); 
+    setResult(null);
     try {
       const data = await verifyAuditChain();
       setResult(data);
@@ -40,9 +40,9 @@ function ChainVerification() {
           Chain integrity verification
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Recomputes every entry's hash from its stored contents and confirms each one links to
-          the entry before it. A single altered field, anywhere in the history, breaks the chain
-          from that point forward.
+          Recomputes every entry's hash from its stored contents and confirms each one links to the
+          entry before it. A single altered field, anywhere in the history, breaks the chain from
+          that point forward.
         </p>
       </div>
 

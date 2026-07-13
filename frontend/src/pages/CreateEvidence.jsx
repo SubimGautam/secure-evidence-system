@@ -79,7 +79,9 @@ function CreateEvidence() {
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Log new evidence</h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+          Log new evidence
+        </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           You become the logging officer and initial custodian of this item.
         </p>
@@ -149,8 +151,8 @@ function CreateEvidence() {
           </select>
           {recipientId && (
             <span className="text-xs text-slate-400">
-              This confirms collection and immediately initiates a transfer — the recipient still has to
-              accept it before custody actually changes.
+              This confirms collection and immediately initiates a transfer — the recipient still
+              has to accept it before custody actually changes.
             </span>
           )}
         </label>

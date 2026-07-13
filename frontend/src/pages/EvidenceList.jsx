@@ -8,7 +8,14 @@ import Spinner from '../components/Spinner';
 import EmptyState from '../components/EmptyState';
 import StatusBadge from '../components/StatusBadge';
 
-const STATUSES = ['PENDING', 'COLLECTED', 'IN_CUSTODY', 'RELEASED_FOR_COURT', 'RETURNED', 'ARCHIVED'];
+const STATUSES = [
+  'PENDING',
+  'COLLECTED',
+  'IN_CUSTODY',
+  'RELEASED_FOR_COURT',
+  'RETURNED',
+  'ARCHIVED',
+];
 
 function EvidenceList() {
   const { user } = useAuth();
@@ -111,7 +118,9 @@ function EvidenceList() {
                           {item.referenceCode}
                         </Link>
                       </td>
-                      <td className="px-4 py-2 text-slate-700 dark:text-slate-300">{item.description}</td>
+                      <td className="px-4 py-2 text-slate-700 dark:text-slate-300">
+                        {item.description}
+                      </td>
                       <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{item.type}</td>
                       <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
                         {item.currentCustodian.fullName}

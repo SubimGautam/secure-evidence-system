@@ -7,7 +7,12 @@ const {
   decryptSecret,
   generateRecoveryCodes,
 } = require('../../lib/mfa');
-const { httpError, issueSession, verifyMfaPendingAndGetUser, toPublicUser } = require('./auth.service');
+const {
+  httpError,
+  issueSession,
+  verifyMfaPendingAndGetUser,
+  toPublicUser,
+} = require('./auth.service');
 const { recordAuditEvent, AUDIT_EVENTS } = require('../../lib/auditLog');
 
 // Shared by setup/login/disable: validates the code AND, on success, persists
@@ -67,7 +72,10 @@ async function verifyMfaSetup(userId, code) {
 }
 
 async function disableMfa(userId, { password, code }) {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, include: { role: true } });
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    include: { role: true },
+  });
 
   if (user.role.name === 'ADMIN') {
     throw httpError(403, 'MFA is mandatory for the Admin role and cannot be disabled');
@@ -102,12 +110,18 @@ async function loginWithMfa({ mfaToken, code, recoveryCode, ip, userAgent }) {
   if (code) {
     await verifyAndConsumeTotpCode(user.id, record, code);
   } else {
-    const matchIndex = await findMatchingRecoveryCodeIndex(record.recoveryCodesHashed, recoveryCode);
+    const matchIndex = await findMatchingRecoveryCodeIndex(
+      record.recoveryCodesHashed,
+      recoveryCode,
+    );
     if (matchIndex === -1) throw httpError(401, 'Invalid recovery code');
 
     // One-time use: the consumed hash is removed so it can't be replayed.
     const remaining = record.recoveryCodesHashed.filter((_, i) => i !== matchIndex);
-    await prisma.mFASecret.update({ where: { userId: user.id }, data: { recoveryCodesHashed: remaining } });
+    await prisma.mFASecret.update({
+      where: { userId: user.id },
+      data: { recoveryCodesHashed: remaining },
+    });
   }
 
   const session = await prisma.$transaction(async (tx) => {

@@ -3,7 +3,11 @@ const custodyService = require('./custody.service');
 async function initiate(req, res, next) {
   try {
     // req.evidence was loaded and custodian-checked by requireCurrentCustodian.
-    const transfer = await custodyService.initiateTransfer(req.evidence, req.user, req.body.toUserId);
+    const transfer = await custodyService.initiateTransfer(
+      req.evidence,
+      req.user,
+      req.body.toUserId,
+    );
     res.status(201).json({ transfer });
   } catch (err) {
     next(err);

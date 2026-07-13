@@ -46,7 +46,9 @@ function CustodyHistory() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Custody history</h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+          Custody history
+        </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Every custody transfer ever initiated, across all evidence.
         </p>
