@@ -2,6 +2,19 @@ const path = require('node:path');
 const dotenv = require('dotenv');
 const { z } = require('zod');
 
+// z.coerce.boolean() runs plain JS `Boolean(value)` — for a string, that's
+// true for anything non-empty, *including* "false". Every env var is a
+// string (Docker Compose, shells, .env files all pass "false" as four
+// characters, not the primitive), so z.coerce.boolean() silently forces
+// this true no matter what the operator wrote. Only "true"/"1"
+// (case-insensitive) parse as true; everything else — "false", "0", "",
+// unset — is false.
+const booleanFromEnv = z.preprocess((val) => {
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'string') return ['true', '1'].includes(val.trim().toLowerCase());
+  return false;
+}, z.boolean());
+
 // quiet: true — dotenv v17+ otherwise prints a random promotional "tip"
 // (including third-party sponsor URLs) to stdout on every boot, which has
 // no business being in this app's logs.
@@ -38,7 +51,7 @@ const envSchema = z.object({
   // top of rate limiting + account lockout (middleware/captcha.js). Off by
   // default so a fresh checkout with no keys provisioned still boots and
   // authenticates — flip CAPTCHA_ENABLED once real hCaptcha keys exist.
-  CAPTCHA_ENABLED: z.coerce.boolean().default(false),
+  CAPTCHA_ENABLED: booleanFromEnv.default(false),
   CAPTCHA_SECRET_KEY: z.string().optional(),
 });
 

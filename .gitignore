@@ -11,3 +11,6 @@
 
 # Postgres data if it's ever bind-mounted instead of using a named volume
 pgdata/
+
+# Local port/volume tweaks for one machine — never something to share via git
+docker-compose.override.yml
