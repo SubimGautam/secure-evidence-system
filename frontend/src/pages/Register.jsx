@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/errorMessage';
 import Alert from '../components/Alert';
+import Captcha, { isCaptchaEnabled } from '../components/Captcha';
 
 function Register() {
   const { register } = useAuth();
@@ -12,6 +13,7 @@ function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,9 +26,14 @@ function Register() {
       return;
     }
 
+    if (isCaptchaEnabled && !captchaToken) {
+      setError('Please complete the CAPTCHA challenge.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await register({ fullName, email, password });
+      await register({ fullName, email, password, captchaToken: captchaToken || undefined });
       navigate('/login', { state: { registered: true } });
     } catch (err) {
       setError(getErrorMessage(err));
@@ -38,7 +45,9 @@ function Register() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Create an account</h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+          Create an account
+        </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           New accounts start as Officer — an Admin can change that later.
         </p>
@@ -80,7 +89,9 @@ function Register() {
             onChange={(e) => setPassword(e.target.value)}
             className="rounded border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
-          <span className="text-xs text-slate-400">At least 12 characters, with a letter and a number.</span>
+          <span className="text-xs text-slate-400">
+            At least 12 characters, with a letter and a number.
+          </span>
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-slate-700 dark:text-slate-300">Confirm password</span>
@@ -93,9 +104,12 @@ function Register() {
             className="rounded border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
         </label>
+
+        <Captcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
+
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || (isCaptchaEnabled && !captchaToken)}
           className="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
         >
           {submitting ? 'Creating account…' : 'Create account'}

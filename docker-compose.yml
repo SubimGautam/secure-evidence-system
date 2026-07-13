@@ -50,6 +50,8 @@ services:
       REFRESH_TOKEN_TTL_DAYS: 7
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       EVIDENCE_STORAGE_PATH: /app/storage/evidence-files
+      CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-false}
+      CAPTCHA_SECRET_KEY: ${CAPTCHA_SECRET_KEY:-}
     volumes:
       - evidence-files:/app/storage/evidence-files
     depends_on:
@@ -61,7 +63,12 @@ services:
     # from the host/internet. Matches the trust-boundary design in §2.
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # Public by design (shipped in the JS bundle) — the hCaptcha site
+        # key isn't a secret, only CAPTCHA_SECRET_KEY (backend-only) is.
+        VITE_HCAPTCHA_SITE_KEY: ${VITE_HCAPTCHA_SITE_KEY:-}
     restart: unless-stopped
     ports:
       - '8080:8080'

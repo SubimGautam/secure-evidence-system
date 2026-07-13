@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/errorMessage';
 import Alert from '../components/Alert';
+import Captcha, { isCaptchaEnabled } from '../components/Captcha';
 
 function Login() {
   const { login, completeMfaLogin } = useAuth();
@@ -12,6 +13,7 @@ function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
   const [mfaToken, setMfaToken] = useState(null);
   const [code, setCode] = useState('');
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
@@ -21,9 +23,15 @@ function Login() {
   async function handlePasswordSubmit(e) {
     e.preventDefault();
     setError('');
+
+    if (isCaptchaEnabled && !captchaToken) {
+      setError('Please complete the CAPTCHA challenge.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const result = await login({ email, password });
+      const result = await login({ email, password, captchaToken: captchaToken || undefined });
       if (result.mfaRequired) {
         setMfaToken(result.mfaToken);
       } else {
@@ -87,9 +95,12 @@ function Login() {
               className="rounded border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
+
+          <Captcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
+
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || (isCaptchaEnabled && !captchaToken)}
             className="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
           >
             {submitting ? 'Signing in…' : 'Sign in'}

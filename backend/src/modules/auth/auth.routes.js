@@ -3,6 +3,7 @@ const validate = require('../../middleware/validate');
 const authenticate = require('../../middleware/authenticate');
 const { createAuthLimiter } = require('../../middleware/rateLimiter');
 const verifyOrigin = require('../../middleware/verifyOrigin');
+const requireCaptcha = require('../../middleware/captcha');
 const controller = require('./auth.controller');
 const {
   registerSchema,
@@ -16,8 +17,22 @@ const {
 
 const router = Router();
 
-router.post('/register', createAuthLimiter(), validate(registerSchema), controller.register);
-router.post('/login', createAuthLimiter(), validate(loginSchema), controller.login);
+// validate() runs first so captchaToken is a known, typed field by the time
+// requireCaptcha() reads it off req.body — order matters, not just style.
+router.post(
+  '/register',
+  createAuthLimiter(),
+  validate(registerSchema),
+  requireCaptcha(),
+  controller.register,
+);
+router.post(
+  '/login',
+  createAuthLimiter(),
+  validate(loginSchema),
+  requireCaptcha(),
+  controller.login,
+);
 router.post('/login/mfa', createAuthLimiter(), validate(mfaLoginSchema), controller.loginMfa);
 
 // Not rate-limited by authLimiter: refresh requires possession of the

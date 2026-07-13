@@ -6,6 +6,11 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+# Baked into the static bundle at build time (Vite convention) — not a
+# runtime env var, since there's no server-side rendering step to read one
+# from. Public value; see docker-compose.yml's comment on why that's fine.
+ARG VITE_HCAPTCHA_SITE_KEY=""
+ENV VITE_HCAPTCHA_SITE_KEY=$VITE_HCAPTCHA_SITE_KEY
 RUN npm run build
 
 # ---- runtime: static build served by an unprivileged nginx ----

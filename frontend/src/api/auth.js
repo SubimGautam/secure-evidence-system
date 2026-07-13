@@ -1,11 +1,13 @@
 import apiClient from './client';
 
-export function register({ email, password, fullName }) {
-  return apiClient.post('/auth/register', { email, password, fullName }).then((r) => r.data);
+export function register({ email, password, fullName, captchaToken }) {
+  return apiClient
+    .post('/auth/register', { email, password, fullName, captchaToken })
+    .then((r) => r.data);
 }
 
-export function login({ email, password }) {
-  return apiClient.post('/auth/login', { email, password }).then((r) => r.data);
+export function login({ email, password, captchaToken }) {
+  return apiClient.post('/auth/login', { email, password, captchaToken }).then((r) => r.data);
 }
 
 export function loginMfa({ mfaToken, code, recoveryCode }) {

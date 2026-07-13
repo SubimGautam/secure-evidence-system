@@ -17,15 +17,22 @@ const totpCodeSchema = z
   .trim()
   .regex(/^\d{6}$/, 'Code must be 6 digits');
 
+// Optional at the schema level — whether it's actually required is a runtime
+// decision (CAPTCHA_ENABLED) enforced by middleware/captcha.js, not baked
+// into validation, so toggling the feature never requires a schema change.
+const captchaTokenSchema = z.string().optional();
+
 const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   fullName: z.string().trim().min(1, 'Full name is required').max(200),
+  captchaToken: captchaTokenSchema,
 });
 
 const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, 'Password is required'),
+  captchaToken: captchaTokenSchema,
 });
 
 const mfaLoginSchema = z
