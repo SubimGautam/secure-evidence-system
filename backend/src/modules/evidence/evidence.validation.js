@@ -1,9 +1,5 @@
 const { z } = require('zod');
 
-// .strict() rejects any key it doesn't recognize instead of silently
-// dropping it — a client sending `status`, `currentCustodianId`, `loggedById`
-// or `id` gets a loud 400, not a quietly-ignored field or (worse) a write
-// mass-assignment would have let through.
 const createEvidenceSchema = z
   .object({
     description: z.string().trim().min(1).max(2000),
