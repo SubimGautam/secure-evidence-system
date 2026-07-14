@@ -1,8 +1,5 @@
 const argon2 = require('argon2');
 
-// OWASP Password Storage Cheat Sheet minimums for argon2id (memory in KiB).
-// Explicit rather than relying on the library's defaults, which can change
-// between versions without notice.
 const HASH_OPTIONS = {
   type: argon2.argon2id,
   memoryCost: 19456,

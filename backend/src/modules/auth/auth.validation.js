@@ -1,8 +1,5 @@
 const { z } = require('zod');
 
-// NIST 800-63B favors length over forced complexity, but a light complexity
-// check here catches the weakest passwords (e.g. "aaaaaaaaaaaa") without
-// the false sense of security that comes with the older ordering rules.
 const passwordSchema = z
   .string()
   .min(12, 'Password must be at least 12 characters')
