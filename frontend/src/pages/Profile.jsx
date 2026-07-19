@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { getErrorMessage } from '../api/errorMessage';
 import Alert from '../components/Alert';
 import Spinner from '../components/Spinner';
+import MfaSettings from '../components/MfaSettings';
 
 function downloadJson(data, filename) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -28,14 +29,18 @@ function Profile() {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  useEffect(() => {
-    usersApi
+  function loadProfile() {
+    return usersApi
       .getOwnProfile()
       .then((p) => {
         setProfile(p);
         setFullName(p.fullName);
       })
       .catch((err) => setError(getErrorMessage(err)));
+  }
+
+  useEffect(() => {
+    loadProfile();
   }, []);
 
   async function handleSave(e) {
@@ -131,6 +136,12 @@ function Profile() {
           </dd>
         </dl>
       </section>
+
+      <MfaSettings
+        profile={profile}
+        isAdmin={profile.role.name === 'ADMIN'}
+        onChanged={loadProfile}
+      />
 
       <form
         onSubmit={handleSave}

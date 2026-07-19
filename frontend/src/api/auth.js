@@ -21,3 +21,15 @@ export function refresh() {
 export function logout() {
   return apiClient.post('/auth/logout').then((r) => r.data);
 }
+
+export function setupMfa() {
+  return apiClient.post('/auth/mfa/setup').then((r) => r.data);
+}
+
+export function verifyMfaSetup(code) {
+  return apiClient.post('/auth/mfa/verify', { code }).then((r) => r.data);
+}
+
+export function disableMfa({ password, code }) {
+  return apiClient.post('/auth/mfa/disable', { password, code }).then((r) => r.data);
+}
