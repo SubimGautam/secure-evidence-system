@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-# A second push to the same branch cancels whatever CI run is still in
-# flight for it — no point finishing a lint pass against code that's
-# already been superseded.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
