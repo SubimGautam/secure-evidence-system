@@ -25,3 +25,4 @@ const upload = multer({
 });
 
 module.exports = { upload, MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES };
+
