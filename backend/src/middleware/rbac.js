@@ -22,3 +22,4 @@ function requirePermission(permission) {
 }
 
 module.exports = { requireRole, requirePermission };
+
