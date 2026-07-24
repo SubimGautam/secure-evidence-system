@@ -14,3 +14,4 @@ function requireCaptcha() {
 }
 
 module.exports = requireCaptcha;
+
