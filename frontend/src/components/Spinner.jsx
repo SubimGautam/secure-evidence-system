@@ -23,3 +23,4 @@ function Spinner({ label = 'Loading…' }) {
 }
 
 export default Spinner;
+
