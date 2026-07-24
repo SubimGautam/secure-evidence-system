@@ -8,3 +8,4 @@ function EmptyState({ title, hint }) {
 }
 
 export default EmptyState;
+
