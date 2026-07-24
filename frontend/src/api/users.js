@@ -18,4 +18,4 @@ export function exportOwnData() {
 
 export function importOwnProfile({ fullName }) {
   return apiClient.post('/users/me/import', { fullName }).then((r) => r.data.user);
-}
+} 
