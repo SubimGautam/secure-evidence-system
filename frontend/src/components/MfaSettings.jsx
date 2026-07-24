@@ -102,6 +102,7 @@ function MfaSettings({ profile, isAdmin, onChanged }) {
           )}
         </div>
       )}
+      
 
       {mode === 'idle' && !profile.mfaEnabled && (
         <div className="flex flex-col gap-2">
