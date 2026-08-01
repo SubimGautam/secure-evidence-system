@@ -2,9 +2,6 @@ import { useEffect, useRef } from 'react';
 
 const SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY;
 
-// Mirrors the backend's CAPTCHA_ENABLED default (config/env.js): both sides
-// are off unless real keys are provisioned, so a fresh checkout with no
-// hCaptcha account still has a working login/register form.
 export const isCaptchaEnabled = Boolean(SITE_KEY);
 
 let scriptPromise = null;
@@ -24,8 +21,6 @@ function loadHCaptchaScript() {
   return scriptPromise;
 }
 
-// Renders nothing when isCaptchaEnabled is false — see the module-level
-// comment above.
 function Captcha({ onVerify, onExpire }) {
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
@@ -51,8 +46,7 @@ function Captcha({ onVerify, onExpire }) {
         widgetIdRef.current = null;
       }
     };
-    // Mount once — the widget manages its own token lifecycle after that.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   if (!isCaptchaEnabled) return null;

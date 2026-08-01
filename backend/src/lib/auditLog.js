@@ -2,8 +2,6 @@ const crypto = require('node:crypto');
 
 const GENESIS_HASH = '0'.repeat(64);
 
-// A fixed, arbitrary key for a Postgres advisory lock (see recordAuditEvent).
-// Any 32-bit-safe integer works — it's not a secret, just a named mutex.
 const AUDIT_CHAIN_LOCK_KEY = 847362910;
 
 const AUDIT_EVENTS = {
@@ -36,10 +34,6 @@ const AUDIT_EVENTS = {
   PROFILE_DATA_EXPORTED: 'PROFILE_DATA_EXPORTED',
 };
 
-// Deterministic regardless of key insertion order — needed because a value
-// round-tripped through Postgres JSONB is not guaranteed to come back with
-// the same key order it was written with, and the hash must be reproducible
-// from what verifyChain() reads back, not just from what was written.
 function canonicalStringify(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(',')}]`;
@@ -69,17 +63,6 @@ function computeEntryHash({
   ].join('|');
   return crypto.createHash('sha256').update(canonical).digest('hex');
 }
-
-// Must be called with a transaction client (`tx` from prisma.$transaction),
-// never the top-level `prisma` client, for two reasons:
-//  1. The advisory lock below only serializes writers within the same
-//     transaction/session scope that then reads-and-inserts — without it,
-//     two concurrent requests could both read the same "last" row and each
-//     compute a valid-looking next link off the same prevHash, forking the
-//     chain into two branches instead of one linear history.
-//  2. The event is meant to be atomic with the action it's recording: if the
-//     audit write fails, the action it describes should roll back too — a
-//     chain-of-custody system's log is not allowed to fall behind reality.
 async function recordAuditEvent(
   tx,
   { actorUserId = null, eventType, entityType = null, entityId = null, payload = null },
@@ -103,11 +86,6 @@ async function recordAuditEvent(
     data: { actorUserId, eventType, entityType, entityId, payload, prevHash, entryHash, timestamp },
   });
 }
-
-// Full recompute from genesis — correct and simple for this project's data
-// volume. A production system with millions of rows would checkpoint
-// periodically (architecture doc §6) and verify only since the last
-// checkpoint; noted as a future improvement rather than built now.
 async function verifyChain(prisma) {
   const rows = await prisma.auditLog.findMany({ orderBy: { timestamp: 'asc' } });
 

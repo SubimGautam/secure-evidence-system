@@ -26,7 +26,7 @@ function verifyFileSignature(buffer, declaredMimeType) {
   }
 
   const signatures = SIGNATURES[declaredMimeType];
-  if (!signatures) return false; // Unrecognized type: fail closed, not open.
+  if (!signatures) return false; 
   return signatures.some((bytes) => matchesSignature(buffer, bytes));
 }
 

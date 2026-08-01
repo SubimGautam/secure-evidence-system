@@ -3,10 +3,6 @@ const env = require('../config/env');
 
 const ISSUER = 'evidence-custody-api';
 
-// `type` is checked on every verify below specifically so an MFA-pending
-// token — deliberately scoped to do nothing but complete a login — can never
-// be replayed against a route that expects a full access token, even though
-// both are signed with the same secret.
 function signAccessToken({ id, role, sessionId }) {
   return jwt.sign({ sub: id, role, sessionId, type: 'access' }, env.JWT_SECRET, {
     expiresIn: env.JWT_ACCESS_TTL,
@@ -20,9 +16,6 @@ function verifyAccessToken(token) {
   return payload;
 }
 
-// Short-lived and single-purpose: proves "this client just supplied the
-// correct password for this account," nothing more. It cannot reach any
-// resource route — only POST /auth/login/mfa accepts it.
 function signMfaPendingToken({ id }) {
   return jwt.sign({ sub: id, type: 'mfa_pending' }, env.JWT_SECRET, {
     expiresIn: '5m',

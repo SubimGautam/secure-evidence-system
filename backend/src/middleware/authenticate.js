@@ -1,10 +1,5 @@
 const { verifyAccessToken } = require('../lib/tokens');
 const prisma = require('../lib/prisma');
-
-// Loads the user fresh from the database on every request rather than
-// trusting the JWT payload alone — a 15-minute access token is only a
-// meaningful security boundary if a role change or account deactivation can
-// still take effect before it expires.
 async function authenticate(req, res, next) {
   try {
     const header = req.get('authorization') || '';

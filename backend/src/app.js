@@ -17,14 +17,8 @@ const adminRoutes = require('./modules/admin/admin.routes');
 
 const app = express();
 
-// Behind the nginx edge in Docker, the real client IP is in X-Forwarded-For —
-// without this, req.ip would be the nginx container's address, and the
-// login/account lockout logic (keyed partly on IP) would treat every request
-// as coming from one "attacker."
 app.set('trust proxy', 1);
 
-// Middleware order matters: cheap, request-rejecting checks run before any
-// parsing or handler work happens. See design doc §3 (Request flow).
 app.use(securityHeaders);
 app.use(
   cors({

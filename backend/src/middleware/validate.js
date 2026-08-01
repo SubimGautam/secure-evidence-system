@@ -1,6 +1,4 @@
-// Parses req.body against a zod schema and replaces it with the
-// parsed/coerced result (e.g. lowercased email) — routes past this
-// middleware can trust req.body matches the schema exactly.
+
 function validate(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);

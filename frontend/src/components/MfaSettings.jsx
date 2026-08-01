@@ -4,10 +4,9 @@ import * as authApi from '../api/auth';
 import { getErrorMessage } from '../api/errorMessage';
 import Alert from './Alert';
 
-// Self-contained enroll/disable flow for TOTP MFA. Lives on its own so
-// Profile.jsx doesn't have to track this multi-step state machine inline.
+
 function MfaSettings({ profile, isAdmin, onChanged }) {
-  const [mode, setMode] = useState('idle'); // idle | setting-up | recovery-codes | disabling
+  const [mode, setMode] = useState('idle'); 
   const [secret, setSecret] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [code, setCode] = useState('');
@@ -23,9 +22,7 @@ function MfaSettings({ profile, isAdmin, onChanged }) {
     try {
       const result = await authApi.setupMfa();
       setSecret(result.secret);
-      // Rendered entirely client-side — the TOTP secret never leaves the
-      // browser via a third-party QR service, which would defeat the point
-      // of keeping it confidential.
+
       setQrDataUrl(await QRCode.toDataURL(result.otpauthUrl));
       setMode('setting-up');
     } catch (err) {

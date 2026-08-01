@@ -10,4 +10,4 @@ const securityHeaders = helmet({
   crossOriginResourcePolicy: { policy: 'same-site' },
 });
 
-module.exports = securityHeaders;
+module.exports = securityHeaders; 
